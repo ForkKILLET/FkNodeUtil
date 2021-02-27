@@ -2,11 +2,18 @@
 //    NAME      ForkKILLET's Utilities (fkutil)
 //    AUTHOR    ForkKILLET
 
+// :: Import
+
+const http      = require("http")
+const https     = require("https")
+const iconv     = require("iconv-lite")
+const BufferH   = require("bufferhelper");
+
 // :: Main
 
 // :::: Ext     lv.0
 
-Error.em = (title, msg) => Error(`\x1B[31m[${title}] ${msg}\x1B[0m`)
+Error.em = (title, msg) => Error(`\x1B[31m${title}: ${msg}\x1B[0m`)
 Error.unreachable = () => Error.em("???", "It's unreachable! You can never see this f**king error!")
 
 Date.prototype.fommat = function(f, UTC) {
@@ -28,18 +35,56 @@ Date.prototype.fommat = function(f, UTC) {
 }
 Date.fromTimeZone = n => new Date(Date.now() + n * 60 * 60 * 1000)
 
-String.prototype.startWith = function(s) { return this.indexOf(s) === 0 }
+String.prototype.reverse = function() {
+    return this.split("").reverse().join("")
+}
+String.prototype.startWith = function(s) {
+    return this.indexOf(s) === 0
+}
+String.prototype.endWith = function(s) {
+    return this.lastIndexOf(s) + s.length === this.length
+}
+String.prototype.indent = function(n, tab) {
+    return this.replace(/^/mg, tab ? "\t".repeat(n) : " ".repeat(n * 4))
+}
+String.prototype.toInitialCase = function() {
+	return this[0].toUpperCase() + this.slice(1)
+}
+
+Number.prototype.toPercent = function() {
+    return (this * 100).toFixed(1) + "%"
+}
+
+Object.fromSymbolNames = (...arr) => {
+    const obj = {}
+    arr.flat().forEach(n => obj[n] = Symbol(n))
+    return obj
+}
+
+Array.fromElementOrArray = i => Is.array(i) ? i : [ i ]
+Array.fromLength = (l, v) => Is.undef(v)
+	? g => Array.from({ length: l }, g)
+	: new Array(l).fill(v)
 
 // :::: Tool    lv.0
 
-function callW(f) { return (...p) => f(...p) }
+const EF = () => {}
 
-function keyOf(key, src, dftKey) {
-    let v = (src ? src[key] : null) ?? src[dftKey]
-    if (typeof v !== "object" || v === null) return v
-    if (v._keyQuote && typeof v.k === "string") return keyOf(v.k, src, dftKey)
+const sleep = ms =>
+    new Promise(resolve => setTimeout(resolve, ms))
+
+function ski(key, src, dft) { // Note: search key in
+    let v = src?.[key] ?? (
+        dft._keyQuote ? ski(dft.k, src) : (
+        dft._keyCallback ? dft.f?.(key, src) :
+        dft
+    ))
+    if (v?._keyQuote) return ski(v.k, src, dft)
+    return v
 }
-keyOf.q = k => ({ k, _keyQuote: true })
+
+ski.q = k => ({ k, _keyQuote: true })
+ski.f = f => ({ f, _keyCallback: true })
 
 class _c_Is {
     // :::::: basic type
@@ -66,26 +111,31 @@ class _c_Is {
     object      = this._w_type("object")
     obj         = this.object
 
+    symbol      = this._w_type("symbol")
+    sym         = this.symbol
+
+    simple      = x => this.string(x) || this.number(x) || this.bigint(x) || this.boolean(x)
+
     // :::::: judge mode
 
     judge       = (x, rule, final) => {
         if (! this.func(rule)) {
-            rule = keyOf(rule, {
+            rule = ski(rule, {
                 any:    (r, p) => ({ pass: p || r, forcepass: r }),
                 anyway: (r, p) => ({ pass: p || r, forcepass: r === "forcepass" }),
                 all:    (r, p) => ({ pass: (p || p === null) && r, forcepass: r === "forcepass" }),
                 none:   (r, p) => ({ pass: (p || p === null) && !r, forcepass: false })
-            }, "all")
+            }, ski.q("all"))
         }
         if (! this.func(final)) {
-            final = keyOf(final, {
+            final = ski(final, {
                 assert: p => {
                     if (!r) throw Error.em("Is.judge",
                         `Assert failed; Rule: ${rule}; More assert info: see Cc.`)
                     return true
                 },
                 result: p => p
-            }, "result")
+            }, ski.q("result"))
         }
 
         const IsJ = {
@@ -141,41 +191,41 @@ class _c_Is {
     neg         = x => this.number(x) && x < 0
     neg0        = x => this.number(x) && x <= 0
 
-    compare     = (x, op, a, b) => keyOf(op, {
+    compare     = (x, op, a, b) => ski(op, {
         "lt":   (x, a) => x < a,
-        "<":    keyOf.q("lt"),
-        "-)":   keyOf.q("lt"),
+        "<":    ski.q("lt"),
+        "-)":   ski.q("lt"),
         
 
         "le":   (x, a) => x <= a,
-        "<=":   keyOf.q("le"),
-        "-]":   keyOf.q("le"),
+        "<=":   ski.q("le"),
+        "-]":   ski.q("le"),
         
         "gt":   (x, a) => x > a,
-        ">":    keyOf.q("gt"),
-        "(+":   keyOf.q("gt"),
+        ">":    ski.q("gt"),
+        "(+":   ski.q("gt"),
 
         "ge":   (x, a) => x >= a,
-        ">=":   keyOf.q("ge"),
-        "[+":   keyOf.q("ge"),
+        ">=":   ski.q("ge"),
+        "[+":   ski.q("ge"),
 
         "ltgt": (x, a, b) => a < x && x < b,
-        "in":   keyOf.q("ltgt"),
-        "<<":   keyOf.q("ltgt"),
-        "()":   keyOf.q("ltgt"),
+        "in":   ski.q("ltgt"),
+        "<<":   ski.q("ltgt"),
+        "()":   ski.q("ltgt"),
 
         "legt": (x, a, b) => a <= x && x < b,
-        "<=<":   keyOf.q("legt"),
-        "[)":   keyOf.q("legt"),
+        "<=<":  ski.q("legt"),
+        "[)":   ski.q("legt"),
 
         "ltge": (x, a, b) => a < x && x <= b,
-        "<<=":   keyOf.q("ltge"),
-        "(]":   keyOf.q("ltge"),
+        "<<=":  ski.q("ltge"),
+        "(]":   ski.q("ltge"),
 
         "lege": (x, a, b) => a <= x && x <= b,
-        "IN":   keyOf.q("lege"),
-        "<=<=": keyOf.q("lege"),
-        "[]":   keyOf.q("lege"),
+        "IN":   ski.q("lege"),
+        "<=<=": ski.q("lege"),
+        "[]":   ski.q("lege"),
     })(x, a, b)
     cmp         = this.compare
     _w_compare  = op => (x, ...p) => this.compare(x, op, ...p)
@@ -205,8 +255,13 @@ class _c_Is {
     empty       = x => x == null
     fake        = x => !x
 
+    // :::::: about object
+
     objectR     = x => this.object(x) && ! this.nul(x)
     objR        = this.objectR
+
+    objectE     = x => this.objectR(x) && Object.getOwnPropertyNames(x).length === 0
+    objE        = this.objectE
 
     // :::::: about array
 
@@ -222,7 +277,7 @@ class _c_Is {
 
     // :::::: correcter
 
-    _corV       = v => ({ _cor: v, _corT: this._corT })
+    _corV       = v => ({ _cor: v })
 
     smartype    = (x, t) => {
         if (this.type(x, t)) return true
@@ -233,31 +288,119 @@ class _c_Is {
 }
 const Is = new _c_Is()
 
+ski.type = (key, src, dft) => {
+    let type = typeof key
+    for (let i of [ "regexp", "array", "date" ])
+        if (Is[i](key)) type = i
+    return ski(type, src, dft)
+}
+
 function Cc(x, n) {
-    const cs = [], xd = () => x
+    const cs = [], xd = () => x // Note: Dynamic x.
     xd._judge = true
     const IsJ = Is.judge(xd,
         (r, p, e) => {
             cs.push(e)
+            if (r._cor) x = r._cor
             if (r) return { pass: true, forcepass: r === "forcepass" }
-            if (r._corT === IsJ._corT) x = r._cor
             throw Error.em("Cc",
                 `Checkee ${n} requires ${e.name}${e.param?.length ? " " + e.param : ""}, but got ${x}.`
             ) // TODO: dull work
         },
         () => x
     )
-    IsJ._corT = Math.random()
     Object.defineProperty(IsJ, "r", {
         get() { return IsJ.q() }
     })
     return IsJ
 }
 
+function exTemplate(str, tem) {
+    for (let n in tem) {
+        const t = tem[n]
+        if (Is.simple(t)) str = str.replace(RegExp(`(?<!\\\\)\\\${\\s*${n}\\s*}`, "g"), t)
+        else if (Is.func(t)) {
+            let r; while (r = str.match(RegExp(`(?<!\\\\)!{\\s*${n}([^]*?)\\s*}`))) {
+                str = str.substring(0, r.index) +
+                t(...(r[1].trim().split(/\s*(?<!\\)\|\s*/).slice(1))) +
+                str.substring(r.index + r[0].length)
+            }
+        }
+    }
+    return str
+}
+exTemplate.reflect = processer => (str, tn, tem) => {
+    const t = {}
+    if (! tn.startWith("exT:")) tn = "exT:" + tn
+    for (let n in tem) {
+        if (Is.simple(tem[n])) {
+            t[n] = tem[n]; continue
+        }
+        if (Is.fun(tem[n])) {
+            t[n] = (...p) => tem[n]({
+                tem: tn,
+                func: tn + "!" + n,
+                param: (idx, pn) => tn + "!" + n + ":" + idx + "#" + pn,
+            }, ...p)
+        }
+    }
+    processer(exTemplate(str, t))
+}
+
+const Logger = opt => ({
+	_: opt.noColor ? "" : s => "\x1B[" + s, // Note: CSI.
+    div(t, u, d) {
+        process.stdout.write(
+            "\n".repeat(u ?? 1) +
+            "-".repeat(10) +
+            "=".repeat(5) +
+            (t ? " " +  this._("1;34m") + t + this._("0m") + " " : "") +
+            "=".repeat(5) +
+            "-".repeat(10) +
+            "\n".repeat(d ?? 1)
+        )
+    },
+    log(...m) {
+        console.log(...m)
+    },
+    debug(...m) {
+        if (opt?.dirObj && m.length === 1 && Is.obj(m[0]))
+            return console.dir(m[0], { depth: Infinity })
+        if (opt?.debug) console.log(...m)
+    },
+    warn(...m) {
+        console.warn(this._("33m") + m.join(" ") + this._("0m") })
+    },
+    err(...m) {
+        m = this._("31m") + m.join(" ") + this._("0m")
+        if (opt?.debug) throw m
+        console.error(m)
+        process.exit()
+    },
+    errEOF(...m) {
+        m = this._("31m") + m.join(" ") + this._("0m")
+        if (opt?.debug) throw m
+        console.error(m)
+        console.log("\n" + "-".repeat(10) + "=".repeat(5) + " "
+			+ this._("1;34m") + "EOF" + this._("0m")
+            + "=".repeat(5) + "-".repeat(10))
+        process.exit()
+    },
+    hili(m) {
+        return this._("32m") + m  + this._("0m")
+    },
+    code(m) {
+        return m
+            .replace(/^/mg, _.esc("48;5;158;32m"))
+            .replace(/$/mg, _.esc("0m"))
+    },
+    exTemplateLog: exTemplate.reflect(console.log)
+})
+
 // :::: Ext     1v.1
 
 Object.clone = src => {
-    if (Is.judge(src, "any").num().str().fun().bigint().empty().re().q()) return src
+    if (Is.judge(src, "any").simple().empty().re().q()) return src
     
     const res = Is.arr(src) ? [] : {}
     for (let i in src) res[i] = Object.clone(src[i])
@@ -266,35 +409,48 @@ Object.clone = src => {
 
 // :::: Tool    lv.2
 
-const EF = () => {}
+function serialize(src, opt) {
+    return JSON.stringify(src, (k, v) => {
+        if (opt?.regexp && Is.regexp(v)) return v.source
+        return v
+    }, opt.indent ?? 4)
+}
 
-async function ajax(tar, encode = "utf8", http_) {
-   return new Promise((resolve, reject) => {
-        (http_ ?? require("http")).get(tar, res => {
+async function ajax(url, encode = "utf8") {
+    return new Promise((resolve, reject) => {
+        ski(url.match(/^(.+?):\/\//)?.[1], { http, https }, ski.f(() => {
+            reject(`Unknown protocol.\nURL: ${url}"`)
+        })).get(url, res => {
             const { statusCode } = res
-            const contentType = res.headers['content-type']
 
             if (statusCode !== 200) {
                 res.resume()
-                reject(new Error(`ajax: Request failed.\n` +
-                    `Status Code: ${statusCode}\n` +
-                    `URL: ${tar}`
-                ))
+                reject({
+                    user: true,
+                    type: "UnexpectResCode", statusCode, URL: url
+                })
             }
 
-            let data = ""
-            res.setEncoding(encode)
-            res.on("data", chunk => data += chunk)
-            res.on("end", () => resolve(data))
+            const bh = new BufferH()
+            
+            res.on("data", chunk => bh.concat(chunk))
+            res.on("end", () => resolve(
+                iconv.decode(bh.toBuffer(), encode)
+            ))
+        }).on("error", err => {
+            reject({
+                user: false, when: "RequestGet", err
+            })
         })
-    })
+    }).catch(e => { throw e })
 }
 
 // :: Export
 
 module.exports = {
-    EF, Is, Cc,
-    callW, keyOf,
-    ajax
+    EF,
+    Is, Cc, ski,
+    sleep, ajax, exTemplate, serialize,
+    Logger
 }
 
