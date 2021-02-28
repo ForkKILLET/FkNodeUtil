@@ -1,6 +1,6 @@
 {
   "name": "fkutil",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "ForkKILLET's utilities",
   "main": "fkutil.js",
   "scripts": {
@@ -14,5 +14,9 @@
     "type": "git",
     "url": "git+https://github.com/ForkFG/FkNodeUtil.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "bufferhelper": "^0.2.1",
+    "iconv-lite": "^0.6.2"
+  }
 }

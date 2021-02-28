@@ -7,7 +7,7 @@
 const http      = require("http")
 const https     = require("https")
 const iconv     = require("iconv-lite")
-const BufferH   = require("bufferhelper");
+const BufferH   = require("bufferhelper")
 
 // :: Main
 
@@ -85,6 +85,15 @@ function ski(key, src, dft) { // Note: search key in
 
 ski.q = k => ({ k, _keyQuote: true })
 ski.f = f => ({ f, _keyCallback: true })
+
+function bindo(o, filter) {
+	let that = {}
+	for (let k in o) {
+		if (k.match(filter)) continue
+		that[k] = Is.func(o[k]) ? o[k].bind(o) : o[k]
+	}
+	return that
+}
 
 class _c_Is {
     // :::::: basic type
@@ -334,9 +343,10 @@ exTemplate.reflect = processer => (str, tn, tem) => {
     if (! tn.startWith("exT:")) tn = "exT:" + tn
     for (let n in tem) {
         if (Is.simple(tem[n])) {
-            t[n] = tem[n]; continue
+            t[n] = tem[n]
+			continue
         }
-        if (Is.fun(tem[n])) {
+        if (Is.func(tem[n])) {
             t[n] = (...p) => tem[n]({
                 tem: tn,
                 func: tn + "!" + n,
@@ -347,8 +357,14 @@ exTemplate.reflect = processer => (str, tn, tem) => {
     processer(exTemplate(str, t))
 }
 
-const Logger = opt => ({
-	_: opt.noColor ? "" : s => "\x1B[" + s, // Note: CSI.
+const Logger = o => ({
+	opt: o ?? {},
+	bind() {
+		return bindo(this, /^(_|bind$)/)
+	},
+	_(s) { // Note: CSI.
+		return this.opt.noColor ? "" : "\x1B[" + s
+	}, 
     div(t, u, d) {
         process.stdout.write(
             "\n".repeat(u ?? 1) +
@@ -364,22 +380,24 @@ const Logger = opt => ({
         console.log(...m)
     },
     debug(...m) {
-        if (opt?.dirObj && m.length === 1 && Is.obj(m[0]))
+        if (this.opt.dirObj && m.length === 1 && Is.obj(m[0]))
             return console.dir(m[0], { depth: Infinity })
-        if (opt?.debug) console.log(...m)
+        if (this.opt.debug) console.log(...m)
     },
     warn(...m) {
-        console.warn(this._("33m") + m.join(" ") + this._("0m") })
+        console.warn(this._("33m") + m.join(" ") + this._("0m"))
     },
     err(...m) {
-        m = this._("31m") + m.join(" ") + this._("0m")
-        if (opt?.debug) throw m
-        console.error(m)
-        process.exit()
+		m = m.join(" ")
+        if (this.opt.debug) throw m
+        else {
+			console.error(this._("31m") + m + this._("0m"))
+			process.exit()
+		}
     },
     errEOF(...m) {
         m = this._("31m") + m.join(" ") + this._("0m")
-        if (opt?.debug) throw m
+        if (this.opt.debug) throw m
         console.error(m)
         console.log("\n" + "-".repeat(10) + "=".repeat(5) + " "
 			+ this._("1;34m") + "EOF" + this._("0m")
@@ -391,8 +409,8 @@ const Logger = opt => ({
     },
     code(m) {
         return m
-            .replace(/^/mg, _.esc("48;5;158;32m"))
-            .replace(/$/mg, _.esc("0m"))
+            .replace(/^/mg, this._("48;5;158;32m"))
+            .replace(/$/mg, this._("0m"))
     },
     exTemplateLog: exTemplate.reflect(console.log)
 })
