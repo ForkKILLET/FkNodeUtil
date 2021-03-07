@@ -16,7 +16,7 @@ const BufferH   = require("bufferhelper")
 Error.em = (title, msg) => Error(`\x1B[31m${title}: ${msg}\x1B[0m`)
 Error.unreachable = () => Error.em("???", "It's unreachable! You can never see this f**king error!")
 
-Date.prototype.fommat = function(f, UTC) {
+Date.prototype.format = function(f, UTC) {
     UTC = UTC ? "UTC" : ""
     const re = {
         "y+": this[`get${UTC}FullYear`](),
