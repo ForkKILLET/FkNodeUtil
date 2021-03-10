@@ -407,6 +407,11 @@ const Logger = o => ({
     hili(m) {
         return this._("32m") + m  + this._("0m")
     },
+	table(t, pad) {
+		return t.map(r => r.map((c, i) =>
+			c + " ".repeat(pad[i] - c.replace(/\x1B\[.+?m/g, "").length)
+		).join("")).join("\n")
+	},
     code(m) {
         return m
             .replace(/^/mg, this._("48;5;158;32m"))
