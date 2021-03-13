@@ -7,8 +7,8 @@ const crypto = require("crypto")
 // :: Config
 
 const bf = {
-    APPID:  "20200920000569502",
-    secret: "E5XNiSkG5F0l70sOdiMy",
+    APPID:  "*****************",
+    secret: "********************",
     addr:   "http://api.fanyi.baidu.com/api/trans/vip/translate"
 }
 

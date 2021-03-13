@@ -399,17 +399,18 @@ const Logger = o => ({
         m = this._("31m") + m.join(" ") + this._("0m")
         if (this.opt.debug) throw m
         console.error(m)
-        console.log("\n" + "-".repeat(10) + "=".repeat(5) + " "
-			+ this._("1;34m") + "EOF" + this._("0m")
-            + "=".repeat(5) + "-".repeat(10))
+        this.div("EOF", 1, 1)
         process.exit()
     },
     hili(m) {
         return this._("32m") + m  + this._("0m")
     },
+	bold(m) {
+		return this._("1m") + m + this._("0m")
+	},
 	table(t, pad) {
 		return t.map(r => r.map((c, i) =>
-			c + " ".repeat(pad[i] - c.replace(/\x1B\[.+?m/g, "").length)
+			c + " ".repeat(pad[i] ? pad[i] - c.replace(/\x1B\[.+?m/g, "").length : 0)
 		).join("")).join("\n")
 	},
     code(m) {
