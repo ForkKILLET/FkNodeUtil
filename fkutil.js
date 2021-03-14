@@ -8,6 +8,7 @@ const http      = require("http")
 const https     = require("https")
 const iconv     = require("iconv-lite")
 const BufferH   = require("bufferhelper")
+const zlib		= require("zlib")
 
 // :: Main
 
@@ -440,33 +441,31 @@ function serialize(src, opt) {
     }, opt.indent ?? 4)
 }
 
-async function ajax(url, encode = "utf8") {
-    return new Promise((resolve, reject) => {
-        ski(url.match(/^(.+?):\/\//)?.[1], { http, https }, ski.f(() => {
-            reject(`Unknown protocol.\nURL: ${url}"`)
-        })).get(url, res => {
-            const { statusCode } = res
+const httpx = {
+	get: (url, opt) => new Promise((resolve, reject) => {
+		ski(url.match(/^(https?):\/{2}/)?.[1], { http, https }, ski.f(() => {
+			reject(`Unknown protocol.\nURL: ${url}"`)
+		})).get(url, opt ?? {}, res => {
+			if (res.statusCode !== 200) {
+				res.resume()
+				reject(res.statusCode)
+			}
+			
+			const headers = Object.fromEntries(res.rawHeaders.map((v, k, a) =>
+				k & 1 ? undefined : [ v, a[k + 1] ]).filter(i => i))
+			const charset = headers["Content-Type"].match(/charset=(.+)$/)?.[1] ?? "utf-8"
+			const gzipped = headers["Content-Encoding"] === "gzip"
 
-            if (statusCode !== 200) {
-                res.resume()
-                reject({
-                    user: true,
-                    type: "UnexpectResCode", statusCode, URL: url
-                })
-            }
-
-            const bh = new BufferH()
-            
-            res.on("data", chunk => bh.concat(chunk))
-            res.on("end", () => resolve(
-                iconv.decode(bh.toBuffer(), encode)
-            ))
-        }).on("error", err => {
-            reject({
-                user: false, when: "RequestGet", err
-            })
-        })
-    }).catch(e => { throw e })
+			const bh = new BufferH()
+			
+			res.on("data", chunk => bh.concat(chunk))
+			res.on("end", async() => {
+				let bf = bh.toBuffer()
+				if (gzipped) bf = zlib.gunzipSync(bf)
+				resolve(iconv.decode(bf, charset))
+			})
+		}).on("error", reject)
+	})
 }
 
 // :: Export
@@ -474,7 +473,7 @@ async function ajax(url, encode = "utf8") {
 module.exports = {
     EF,
     Is, Cc, ski,
-    sleep, ajax, exTemplate, serialize,
+    sleep, httpx, exTemplate, serialize,
     Logger
 }
 
