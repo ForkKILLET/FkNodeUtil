@@ -39,12 +39,6 @@ Date.fromTimeZone = n => new Date(Date.now() + n * 60 * 60 * 1000)
 String.prototype.reverse = function() {
     return this.split("").reverse().join("")
 }
-String.prototype.startWith = function(s) {
-    return this.indexOf(s) === 0
-}
-String.prototype.endWith = function(s) {
-    return this.lastIndexOf(s) + s.length === this.length
-}
 String.prototype.indent = function(n, tab) {
     return this.replace(/^/mg, tab ? "\t".repeat(n) : " ".repeat(n * 4))
 }
@@ -153,7 +147,7 @@ class _c_Is {
             q() { return final(this._pass) }
         }
         for (let i in this) {
-            if ((i[0] === "_" || i === "judge") && ! i.startWith("_cor")) continue
+            if ((i[0] === "_" || i === "judge") && ! i.startsWith("_cor")) continue
             else if (this.func(this[i])) IsJ[i] = (...p) => {
                 if (! IsJ._forcepass) ({
                         pass: IsJ._pass,
@@ -341,7 +335,7 @@ function exTemplate(str, tem) {
 }
 exTemplate.reflect = processer => (str, tn, tem) => {
     const t = {}
-    if (! tn.startWith("exT:")) tn = "exT:" + tn
+    if (! tn.startsWith("exT:")) tn = "exT:" + tn
     for (let n in tem) {
         if (Is.simple(tem[n])) {
             t[n] = tem[n]
