@@ -397,8 +397,8 @@ const Logger = o => ({
         this.div("EOF", 1, 1)
         process.exit()
     },
-    hili(m) {
-        return this._("32m") + m  + this._("0m")
+    hili(m, c = 2) {
+        return this._(`3${c}m`) + m  + this._(`0m`)
     },
 	bold(m) {
 		return this._("1m") + m + this._("0m")
