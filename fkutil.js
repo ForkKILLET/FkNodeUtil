@@ -45,6 +45,9 @@ String.prototype.indent = function(n, tab) {
 String.prototype.toInitialCase = function() {
 	return this[0].toUpperCase() + this.slice(1)
 }
+String.prototype.displayLength = function() {
+	return [ ...this ].reduce((a, c) => a + (c.charCodeAt() > 127 ? 2 : 1), 0)
+}
 
 Number.prototype.toPercent = function() {
     return (this * 100).toFixed(1) + "%"
@@ -133,8 +136,8 @@ class _c_Is {
         }
         if (! this.func(final)) {
             final = ski(final, {
-                assert: p => {
-                    if (!r) throw Error.em("Is.judge",
+                assert: () => {
+                    if (! r) throw Error.em("Is.judge",
                         `Assert failed; Rule: ${rule}; More assert info: see Cc.`)
                     return true
                 },
@@ -163,7 +166,7 @@ class _c_Is {
         return IsJ
     }
     j           = this.judge
-    
+
     // :::::: generic
 
     eq          = (x, a) => x === a
@@ -198,20 +201,20 @@ class _c_Is {
     compare     = (x, op, a, b) => ski(op, {
         "lt":   (x, a) => x < a,
         "<":    ski.q("lt"),
-        "-)":   ski.q("lt"),
-        
+        "))":   ski.q("lt"),
+
 
         "le":   (x, a) => x <= a,
         "<=":   ski.q("le"),
-        "-]":   ski.q("le"),
-        
+        ")]":   ski.q("le"),
+
         "gt":   (x, a) => x > a,
         ">":    ski.q("gt"),
-        "(+":   ski.q("gt"),
+        "((":   ski.q("gt"),
 
         "ge":   (x, a) => x >= a,
         ">=":   ski.q("ge"),
-        "[+":   ski.q("ge"),
+        "[(":   ski.q("ge"),
 
         "ltgt": (x, a, b) => a < x && x < b,
         "in":   ski.q("ltgt"),
@@ -359,7 +362,7 @@ const Logger = o => ({
 	},
 	_(s) { // Note: CSI.
 		return this.opt.noColor ? "" : "\x1B[" + s
-	}, 
+	},
     div(t, u, d) {
         process.stdout.write(
             "\n".repeat(u ?? 1) +
@@ -405,7 +408,7 @@ const Logger = o => ({
 	},
 	table(t, pad) {
 		return t.map(r => r.map((c, i) =>
-			c + " ".repeat(pad[i] ? pad[i] - c.replace(/\x1B\[.+?m/g, "").length : 0)
+			c + " ".repeat(pad[i] ? pad[i] - c.replace(/\x1B\[.+?m/g, "").displayLength() : 0)
 		).join("")).join("\n")
 	},
     code(m) {
@@ -413,14 +416,14 @@ const Logger = o => ({
             .replace(/^/mg, this._("48;5;158;32m"))
             .replace(/$/mg, this._("0m"))
     },
-    exTemplateLog: exTemplate.reflect(console.log)
+    extlog: exTemplate.reflect(console.log)
 })
 
 // :::: Ext     1v.1
 
 Object.clone = src => {
     if (Is.judge(src, "any").simple().empty().re().q()) return src
-    
+
     const res = Is.arr(src) ? [] : {}
     for (let i in src) res[i] = Object.clone(src[i])
     return res
@@ -429,7 +432,7 @@ Object.clone = src => {
 // :::: Tool    lv.2
 
 function serialize(src, opt) {
-    return JSON.stringify(src, (k, v) => {
+    return JSON.stringify(src, (_, v) => {
         if (opt?.regexp && Is.regexp(v)) return v.source
         return v
     }, opt.indent ?? 4)
@@ -444,14 +447,14 @@ const httpx = {
 				res.resume()
 				reject(res.statusCode)
 			}
-			
+
 			const headers = Object.fromEntries(res.rawHeaders.map((v, k, a) =>
 				k & 1 ? undefined : [ v, a[k + 1] ]).filter(i => i))
 			const charset = headers["Content-Type"].match(/charset=(.+)$/)?.[1] ?? "utf-8"
 			const gzipped = headers["Content-Encoding"] === "gzip"
 
 			const bh = new BufferH()
-			
+
 			res.on("data", chunk => bh.concat(chunk))
 			res.on("end", async() => {
 				let bf = bh.toBuffer()
