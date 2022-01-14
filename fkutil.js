@@ -413,19 +413,16 @@ const Logger = o => ({
         console.warn(this._("33m") + m.join(" ") + this._("0m"))
     },
     err(...m) {
-		m = m.join(" ")
-        if (this.opt.debug) throw m
-        else {
-			console.error(this._("31m") + m + this._("0m"))
-			process.exit()
-		}
+		console.error(this._("31m") + m + this._("0m"))
     },
-    errEOF(...m) {
+    fatal(...m) {
         m = this._("31m") + m.join(" ") + this._("0m")
         if (this.opt.debug) throw m
-        console.error(m)
-        this.div("EOF", 1, 1)
-        process.exit()
+        else {
+			console.error(m)
+			this.div("EOE", 1, 1)
+			process.exit()
+		}
     },
     hili(m, c = 2) {
         return this._(`3${c}m`) + m  + this._(`0m`)
@@ -456,6 +453,43 @@ Object.clone = src => {
     const res = Is.arr(src) ? [] : {}
     for (let i in src) res[i] = Object.clone(src[i])
     return res
+}
+
+Object.path = (obj, path, create, val) => {
+	if (! path.match(/^[.[]/)) path = "." + path
+
+	const rsit = path.matchAll(/\.([_a-zA-Z][0-9_a-zA-Z]*)|\[(\d+)]/g)
+	let rs, o = obj, pa_o, k, pa_k, t
+	// Note:
+	// a.b.c
+	// o					pa_o				k		pa_k
+	// { a: b: { c: 1 } }	undefined			"a"		undefined
+	// { b: { c: 1 } }		{ a: b: { c: 1 } }	"b"		"a"
+	// { c: 1}				{ b: { c: 1 } }		"c"		"b"
+
+	while (! (rs = rsit.next()).done) {
+		t = !! rs.value[1] // Note: 0 Number, 1 String.
+		k = t ? rs.value[1] : Number(rs.value[2])
+
+		if (Is.objR(o)) {
+			if (t ^ Is.arr(o)) ;
+			else if (create) throw "Path type conflicted."
+		}
+
+		else if (Is.udf(o)) {
+			if (create) o = pa_o[pa_k] = t ? {} : []
+			else throw "Path includes undefined."
+		}
+		else if (create) throw "Path type conflicted."
+
+		pa_o = o
+		o = o[k]
+		pa_k = k
+	}
+
+	if (create) pa_o[pa_k] = val
+
+	return pa_o[pa_k]
 }
 
 // :::: Tool    lv.2
