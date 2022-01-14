@@ -48,6 +48,10 @@ String.prototype.toInitialCase = function() {
 String.prototype.displayLength = function() {
 	return [ ...this ].reduce((a, c) => a + (c.charCodeAt() > 127 ? 2 : 1), 0)
 }
+String.prototype.isEscapedAt = function(i, ch = "\\") {
+	let e = 0; while (this[i - e - 1] === ch) e ++
+	return e % 2 === 1
+}
 
 Number.prototype.toPercent = function() {
     return (this * 100).toFixed(1) + "%"
@@ -306,7 +310,7 @@ function Cc(x, n) {
     const cs = [], xd = () => x // Note: Dynamic x.
     xd._judge = true
     const IsJ = Is.judge(xd,
-        (r, p, e) => {
+        (r, _, e) => {
             cs.push(e)
             if (r._cor) x = r._cor
             if (r) return { pass: true, forcepass: r === "forcepass" }
@@ -322,21 +326,43 @@ function Cc(x, n) {
     return IsJ
 }
 
-function exTemplate(str, tem) {
-    for (let n in tem) {
-        const t = tem[n]
-        if (Is.simple(t)) str = str.replace(RegExp(`(?<!\\\\)\\\${\\s*${n}\\s*}`, "g"), t)
-        else if (Is.func(t)) {
-            let r; while (r = str.match(RegExp(`(?<!\\\\)!{\\s*${n}([^]*?)\\s*}`))) {
-                str = str.substring(0, r.index) +
-                t(...(r[1].trim().split(/\s*(?<!\\)\|\s*/).slice(1))) +
-                str.substring(r.index + r[0].length)
-            }
-        }
-    }
+function exT(str, tem) {
+	let i = str.length - 1
+	while (i > 0) {
+		i = str.lastIndexOf("{", i) - 1
+		const tt = exT.ch2tt[str[i]]
+		if (! tt) continue
+		if (str.isEscapedAt(i)) continue
+		let j = i + 2; while (j > 0) {
+			j = str.indexOf("}", j)
+			if (str.isEscapedAt(j)) continue
+			break
+		}
+		if (j < 0) throw `unmatched ${ str[i] }{`
+		const s = str.slice(i + 2, j).trim()
+		let t; switch (tt) {
+		case exT.tt.SIMPLE:
+			t = tem[s]
+			if (Is.empty(t)) throw `undefined \${ ${s} }`
+			if (Is.simple(t)) r = t
+			else throw `unsimple \${ ${s} }`
+			break
+		case exT.tt.FUNC:
+			const [ n, ...p ] = s.split("|").map(s => s.trim())
+			t = tem[n]
+			if (Is.empty(t)) throw `undefined !{ ${s} }`
+			if (Is.func(t)) r = t(...p)
+			else throw `uncallable !{ ${s} }`
+			break
+		}
+		str = str.slice(0, i) + r + str.slice(j + 1)
+	}
+
     return str
 }
-exTemplate.reflect = (processer, d_tem) => (str, tn, tem) => {
+exT.ch2tt = { "$": 1, "!": 2 }
+exT.tt = { SIMPLE: 1, FUNC: 2 }
+exT.reflect = (processer, d_tem) => (str, tn, tem) => {
     const t = {}
 	tem = { ...d_tem, ...tem }
     if (! tn.startsWith("exT:")) tn = "exT:" + tn
@@ -353,7 +379,7 @@ exTemplate.reflect = (processer, d_tem) => (str, tn, tem) => {
             }, ...p)
         }
     }
-    processer(exTemplate(str, t))
+    processer(exT(str, t))
 }
 
 const Logger = o => ({
@@ -418,7 +444,7 @@ const Logger = o => ({
             .replace(/$/mg, this._("0m"))
     },
     extlog(...p) {
-		exTemplate.reflect(console.log, this.opt.dftTem)(...p)
+		exT.reflect(console.log, this.opt.dftTem)(...p)
 	}
 })
 
@@ -459,7 +485,7 @@ const httpx = {
 			const bh = new BufferH()
 
 			res.on("data", chunk => bh.concat(chunk))
-			res.on("end", async() => {
+			res.on("end", async () => {
 				let bf = bh.toBuffer()
 				if (gzipped) bf = zlib.gunzipSync(bf)
 				resolve(iconv.decode(bf, charset))
@@ -473,7 +499,7 @@ const httpx = {
 module.exports = {
     EF,
     Is, Cc, ski,
-    sleep, httpx, exTemplate, serialize,
+    sleep, httpx, exT, exTemplate: exT, serialize,
     Logger
 }
 
