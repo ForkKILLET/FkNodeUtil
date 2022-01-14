@@ -336,8 +336,9 @@ function exTemplate(str, tem) {
     }
     return str
 }
-exTemplate.reflect = processer => (str, tn, tem) => {
+exTemplate.reflect = (processer, d_tem) => (str, tn, tem) => {
     const t = {}
+	tem = { ...d_tem, ...tem }
     if (! tn.startsWith("exT:")) tn = "exT:" + tn
     for (let n in tem) {
         if (Is.simple(tem[n])) {
@@ -416,7 +417,9 @@ const Logger = o => ({
             .replace(/^/mg, this._("48;5;158;32m"))
             .replace(/$/mg, this._("0m"))
     },
-    extlog: exTemplate.reflect(console.log)
+    extlog(...p) {
+		exTemplate.reflect(console.log, this.opt.dftTem)(...p)
+	}
 })
 
 // :::: Ext     1v.1
