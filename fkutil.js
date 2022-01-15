@@ -4,11 +4,12 @@
 
 // :: Import
 
-const http      = require("http")
-const https     = require("https")
-const iconv     = require("iconv-lite")
-const BufferH   = require("bufferhelper")
-const zlib		= require("zlib")
+const http			= require("http")
+const https			= require("https")
+const iconv			= require("iconv-lite")
+const BufferH		= require("bufferhelper")
+const zlib			= require("zlib")
+const { inspect }	= require("util")
 
 // :: Main
 
@@ -390,6 +391,10 @@ const Logger = o => ({
 	_(s) { // Note: CSI.
 		return this.opt.noColor ? "" : "\x1B[" + s
 	},
+	$(s, m) {
+		const csi = this._(s)
+		return typeof m === "function" ? m(csi) : csi + m
+	},
     div(t, u, d) {
         process.stdout.write(
             "\n".repeat(u ?? 1) +
@@ -401,22 +406,22 @@ const Logger = o => ({
             "\n".repeat(d ?? 1)
         )
     },
-    log(...m) {
-        console.log(...m)
+    log(...p) {
+        console.log(...p)
     },
-    debug(...m) {
+    debug(f, ...p) {
         if (this.opt.dirObj && m.length === 1 && Is.obj(m[0]))
-            return console.dir(m[0], { depth: Infinity })
-        if (this.opt.debug) console.log(...m)
+            return console.dir(f, { depth: Infinity })
+        if (this.opt.debug) console.log(f, ...p)
     },
-    warn(...m) {
-        console.warn(this._("33m") + m.join(" ") + this._("0m"))
+    warn(f, ...p) {
+        console.warn(this.$("33m", f), ...p)
     },
-    err(...m) {
-		console.error(this._("31m") + m + this._("0m"))
+    err(f, ...p) {
+		console.error(this.$("31m", f), ...p)
     },
-    fatal(...m) {
-        m = this._("31m") + m.join(" ") + this._("0m")
+    fatal(f, ...p) {
+        m = inspect(this.$("31m", f), ...p)
         if (this.opt.debug) throw m
         else {
 			console.error(m)
@@ -425,10 +430,19 @@ const Logger = o => ({
 		}
     },
     hili(m, c = 2) {
-        return this._(`3${c}m`) + m  + this._(`0m`)
+        return this.$(`3${c}m`, m)
     },
+	hiqt(s, ...t) {
+		return csi => {
+			let r = csi + s[0]
+			for (let i = 1; i < s.length; i ++) {
+				r += `"` + this.hili(t[i - 1]) + (csi ?? "") + `"` + s[i]
+			}
+			return r
+		}
+	},
 	bold(m) {
-		return this._("1m") + m + this._("0m")
+		return this.$("1m", m)
 	},
 	table(t, pad) {
 		return t.map(r => r.map((c, i) =>
@@ -504,7 +518,7 @@ function serialize(src, opt) {
 const httpx = {
 	get: (url, opt) => new Promise((resolve, reject) => {
 		ski(url.match(/^(https?):\/{2}/)?.[1], { http, https }, ski.f(() => {
-			reject(`Unknown protocol.\nURL: ${url}"`)
+			reject(`Unknown protocol.\nURL: ${url}."`)
 		})).get(url, opt ?? {}, res => {
 			if (res.statusCode !== 200) {
 				res.resume()
@@ -521,7 +535,7 @@ const httpx = {
 			res.on("data", chunk => bh.concat(chunk))
 			res.on("end", async () => {
 				let bf = bh.toBuffer()
-				if (gzipped) bf = zlib.gunzipSync(bf)
+				if (gzipped) bf = await zlib.gunzip(bf)
 				resolve(iconv.decode(bf, charset))
 			})
 		}).on("error", reject)
