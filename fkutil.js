@@ -10,7 +10,7 @@ const iconv		= require("iconv-lite")
 const BufferH	= require("bufferhelper")
 const zlib		= require("zlib")
 const {
-	inspect, format
+	inspect, format, promisify
 }				= require("util")
 
 // :: Main
@@ -523,29 +523,29 @@ function serialize(src, opt) {
 }
 
 const httpx = {
-	get: (url, opt) => new Promise((resolve, reject) => {
+	get: (url, opt) => new Promise((res, rej) => {
 		ski(url.match(/^(https?):\/{2}/)?.[1], { http, https }, ski.f(() => {
-			reject(`Unknown protocol.\nURL: ${url}."`)
-		})).get(url, opt ?? {}, res => {
-			if (res.statusCode !== 200) {
-				res.resume()
-				reject(res.statusCode)
+			rej(`Unknown protocol.\nURL: ${url}."`)
+		})).get(url, opt ?? {}, dat => {
+			if (dat.statusCode !== 200) {
+				dat.resume()
+				rej(dat.statusCode)
 			}
 
-			const headers = Object.fromEntries(res.rawHeaders.map((v, k, a) =>
+			const headers = Object.fromEntries(dat.rawHeaders.map((v, k, a) =>
 				k & 1 ? undefined : [ v, a[k + 1] ]).filter(i => i))
 			const charset = headers["Content-Type"].match(/charset=(.+)$/)?.[1] ?? "utf-8"
 			const gzipped = headers["Content-Encoding"] === "gzip"
 
 			const bh = new BufferH()
 
-			res.on("data", chunk => bh.concat(chunk))
-			res.on("end", async () => {
+			dat.on("data", chunk => bh.concat(chunk))
+			dat.on("end", async () => {
 				let bf = bh.toBuffer()
-				if (gzipped) bf = await zlib.gunzip(bf)
-				resolve(iconv.decode(bf, charset))
+				if (gzipped) bf = await promisify(zlib.gunzip)(bf)
+				res(iconv.decode(bf, charset))
 			})
-		}).on("error", reject)
+		}).on("error", rej)
 	})
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "fkutil",
-  "version": "3.5.0",
+  "version": "3.5.3",
   "description": "ForkKILLET's utilities",
   "main": "fkutil.js",
   "scripts": {
