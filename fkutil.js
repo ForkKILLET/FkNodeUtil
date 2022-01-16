@@ -4,12 +4,14 @@
 
 // :: Import
 
-const http			= require("http")
-const https			= require("https")
-const iconv			= require("iconv-lite")
-const BufferH		= require("bufferhelper")
-const zlib			= require("zlib")
-const { inspect }	= require("util")
+const http		= require("http")
+const https		= require("https")
+const iconv		= require("iconv-lite")
+const BufferH	= require("bufferhelper")
+const zlib		= require("zlib")
+const {
+	inspect, format
+}				= require("util")
 
 // :: Main
 
@@ -393,7 +395,7 @@ const Logger = o => ({
 	},
 	$(s, m) {
 		const csi = this._(s)
-		return typeof m === "function" ? m(csi) : csi + m
+		return csi + String(m).replaceAll(this._("0m"), csi) + this._("0m")
 	},
     div(t, u, d) {
         process.stdout.write(
@@ -421,7 +423,7 @@ const Logger = o => ({
 		console.error(this.$("31m", f), ...p)
     },
     fatal(f, ...p) {
-        m = inspect(this.$("31m", f), ...p)
+        m = format(this.$("31m", f), ...p)
         if (this.opt.debug) throw m
         else {
 			console.error(m)
@@ -433,13 +435,11 @@ const Logger = o => ({
         return this.$(`3${c}m`, m)
     },
 	hiqt(s, ...t) {
-		return csi => {
-			let r = csi + s[0]
-			for (let i = 1; i < s.length; i ++) {
-				r += `"` + this.hili(t[i - 1]) + (csi ?? "") + `"` + s[i]
-			}
-			return r
+		let r = s[0]
+		for (let i = 1; i < s.length; i ++) {
+			r += `"` + this.hili(t[i - 1]) + `"` + s[i]
 		}
+		return r
 	},
 	bold(m) {
 		return this.$("1m", m)
