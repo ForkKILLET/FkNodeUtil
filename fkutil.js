@@ -398,7 +398,7 @@ const Logger = o => ({
 		return csi + String(m).replaceAll(this._("0m"), csi) + this._("0m")
 	},
     div(t, u, d) {
-        process.stdout.write(
+        this.opt.drop || process.stdout.write(
             "\n".repeat(u ?? 1) +
             "-".repeat(10) +
             "=".repeat(5) +
@@ -409,28 +409,35 @@ const Logger = o => ({
         )
     },
     log(...p) {
-        console.log(...p)
+        this.opt.drop || console.log(...p)
     },
+	logi(m) {
+		this.opt.drop || process.stdout.write(m)
+	},
     debug(f, ...p) {
         if (this.opt.dirObj && m.length === 1 && Is.obj(m[0]))
             return console.dir(f, { depth: Infinity })
         if (this.opt.debug) console.log(f, ...p)
     },
     warn(f, ...p) {
-        console.warn(this.$("33m", f), ...p)
+		this.opt.drop || console.warn(this.$("33m", f), ...p)
     },
     err(f, ...p) {
-		console.error(this.$("31m", f), ...p)
+		this.opt.drop || console.error(this.$("31m", f), ...p)
     },
     fatal(f, ...p) {
         m = format(this.$("31m", f), ...p)
         if (this.opt.debug) throw m
         else {
-			console.error(m)
+			this.opt.drop || console.error(m)
 			this.div("EOE", 1, 1)
 			process.exit()
 		}
     },
+	catch(f) {
+		try { return f() }
+		catch (err) { this.opt.drop || this.warn(err) }
+	},
     hili(m, c = 2) {
         return this.$(`3${c}m`, m)
     },
@@ -455,7 +462,7 @@ const Logger = o => ({
             .replace(/$/mg, this._("0m"))
     },
     extlog(...p) {
-		exT.reflect(console.log, this.opt.dftTem)(...p)
+		this.opt.drop || exT.reflect(console.log, this.opt.dftTem)(...p)
 	}
 })
 
