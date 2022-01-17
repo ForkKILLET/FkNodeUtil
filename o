@@ -1,0 +1,35 @@
+[32mxbqg%[0m trigger run
+xbqg% read setting
+xbqg% read history
+xbqg% write history
+xbqg% trigger pre-watch, pre*
+xbqg% trigger pre-book_show, pre*
+----------===== book show =====----------
+
+xbqg% read books
+name      source    title                                   time                watch
+lmzj      xbqg      第一千三百九十五章 凡人守望-黎明之剑  @ 4 months ago        
+ggllzts   ibiqu     一百一十五.血腥农场 @ 光怪陆离侦探社    an hour ago         *
+csjxs     xbqg      1448 新的秘闻与各奔前路-超神机械师  @ 超52 years ago        *
+tqyb      ibiqu     第一千一百七十八章 酒宴 @ 天启预报      3 days ago          
+cyyh      ibiqu     第三十六章 演戏演全套 @ 长夜余火        4 days ago          
+wgxm      ibiqu     第139章 最功利的部分 @ 王国血脉         8 days ago          
+wdzyxyx   ibiqu     第500章 你是谁（4000求月票） @ 我的治愈 3 minutes ago       *
+
+----------===== EOF =====----------
+xbqg% trigger post-book_show, post*
+[1A                                   
+[1AWatching.
+[80C[8Ax[81D[8B[80C[7A/[81D[7B[80C[7A-[81D[7B[80C[7A![81D[7B[80C[3A√[81D[3Bxbqg% read around
+xbqg% read books
+----------===== book mark =====----------
+
+xbqg% write books
+Updated.
+
+----------===== EOF =====----------
+xbqg% write books
+xbqg% write setting
+Updated: [ 1 / 3 ]
+
+----------===== EOF =====----------

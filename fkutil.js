@@ -49,7 +49,7 @@ String.prototype.toInitialCase = function() {
 	return this[0].toUpperCase() + this.slice(1)
 }
 String.prototype.displayLength = function() {
-	return [ ...this ].reduce((a, c) => a + (c.charCodeAt() > 127 ? 2 : 1), 0)
+	return [ ...this.replace(/\x1B\[.+?m/g, "") ].reduce((a, c) => a + (c.charCodeAt() > 127 ? 2 : 1), 0)
 }
 String.prototype.isEscapedAt = function(i, ch = "\\") {
 	let e = 0; while (this[i - e - 1] === ch) e ++
@@ -452,9 +452,19 @@ const Logger = o => ({
 		return this.$("1m", m)
 	},
 	table(t, pad) {
-		return t.map(r => r.map((c, i) =>
-			c + " ".repeat(pad[i] ? pad[i] - c.replace(/\x1B\[.+?m/g, "").displayLength() : 0)
-		).join("")).join("\n")
+		return t.map(r => r.map((c, i) => {
+			const l = c.displayLength()
+			let d = pad[i] - l
+			if (pad[i]) {
+				if (d < 0) {
+					let j = c.length; while (-- j > 0)
+						if ((d = pad[i] - c.slice(0, j).displayLength()) >= 0) break
+					c = c.slice(0, j)
+				}
+				return c + " ".repeat(d)
+			}
+			return c
+		}).join("")).join("\n")
 	},
     code(m) {
         return m
