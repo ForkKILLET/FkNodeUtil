@@ -461,7 +461,7 @@ const Logger = o => ({
 						if ((d = pad[i] - c.slice(0, j).displayLength()) >= 0) break
 					c = c.slice(0, j)
 				}
-				return c + " ".repeat(d)
+				return c + this._("0m") + " ".repeat(d)
 			}
 			return c
 		}).join("")).join("\n")
